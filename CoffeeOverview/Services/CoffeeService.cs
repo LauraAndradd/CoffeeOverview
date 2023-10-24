@@ -2,7 +2,7 @@
 
 namespace CoffeeOverview.Services
 {
-    public class CoffeeService
+    public class CoffeeService : ICoffeeService
     {
         private const double CAFFEINE_HALF_LIFE = 5;
 

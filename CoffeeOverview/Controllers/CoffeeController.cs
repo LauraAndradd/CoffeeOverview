@@ -11,9 +11,9 @@ namespace CoffeeOverview.Controllers
     [ApiController]
     public class CoffeeController : ControllerBase
     {
-        private readonly CoffeeService coffeeService; 
+        private readonly ICoffeeService coffeeService;
 
-        public CoffeeController(CoffeeService coffeeService)
+        public CoffeeController(ICoffeeService coffeeService)
         {
             this.coffeeService = coffeeService;
         }
@@ -40,9 +40,6 @@ namespace CoffeeOverview.Controllers
         {
             List<CoffeeRecommendation> recommendations = new List<CoffeeRecommendation>();
 
-            //const int IDEAL_CAFFEINE_LEVEL = 175; // mg
-            //const int MAX_DAILY_CAFFEINE = 500; // mg
-            //const int CAFFEINE_EFFECT_PLATEAU = 300; // mg
             const double CAFFEINE_HALF_LIFE = 5.0; // horas
 
             List<CoffeeType> coffeeTypes = new List<CoffeeType>
@@ -58,7 +55,6 @@ namespace CoffeeOverview.Controllers
 
             foreach (var recentConsumption in recentConsumptions)
             {
-
                 CoffeeType coffeeType = coffeeTypes.FirstOrDefault(ct => ct.Code == recentConsumption.Code);
 
                 if (coffeeType != null)
@@ -73,7 +69,7 @@ namespace CoffeeOverview.Controllers
 
                     recommendations.Add(new CoffeeRecommendation
                     {
-                        Name = coffeeType.Name, 
+                        Name = coffeeType.Name,
                         Code = coffeeType.Code,
                         Wait = timeToWait
                     });
