@@ -36,11 +36,13 @@ namespace CoffeeOverview.Controllers
         }
 
         [HttpPost("calculate")]
-        public ActionResult<IEnumerable<CoffeeRecommendation>> CalculateRecommendations([FromBody] List<RecentCoffeeConsumption> recentConsumptions)
+        //public ActionResult<IEnumerable<CoffeeRecommendation>> CalculateRecommendations([FromBody] List<RecentCoffeeConsumption> recentConsumptions)
+        public ActionResult<IEnumerable<CoffeeRecommendation>> CalculateRecommendations([FromBody] RecommendationInput input)
         {
             List<CoffeeRecommendation> recommendations = new List<CoffeeRecommendation>();
 
             const double CAFFEINE_HALF_LIFE = 5.0; // horas
+            const int IDEAL_CAFFEINE_LEVEL = 175; // mg
 
             List<CoffeeType> coffeeTypes = new List<CoffeeType>
             {
@@ -53,26 +55,82 @@ namespace CoffeeOverview.Controllers
                 new CoffeeType { Code = "dec", CaffeineLevel = 7 }
             };
 
-            foreach (var recentConsumption in recentConsumptions)
+            int CalculateTimeToReachLevel(int desiredLevel, int currentLevel, int caffeinePerCoffee, double halfLife)
             {
-                CoffeeType coffeeType = coffeeTypes.FirstOrDefault(ct => ct.Code == recentConsumption.Code);
+                int timeToWait = 0;
+                while (currentLevel < desiredLevel)
+                {
+                    currentLevel += caffeinePerCoffee;
+
+                    int timeForHalfLife = (int)(halfLife * 60);
+                    timeToWait += timeForHalfLife;
+                }
+
+                return timeToWait;
+            }
+
+            foreach (var recommendation in input.Recommendations)
+            {
+                string code = recommendation.Code;
+                int time = recommendation.Time;
+
+                CoffeeType coffeeType = coffeeTypes.FirstOrDefault(ct => ct.Code == code);
 
                 if (coffeeType != null)
                 {
-                    int consumedCaffeine = recentConsumptions
+                    int consumedCaffeine = input.Recommendations
                         .Where(c => c.Code == coffeeType.Code)
-                        .Sum(c => c.Time <= CAFFEINE_HALF_LIFE * 60 ? coffeeType.CaffeineLevel : 0); // Converte a meia-vida para minutos
+                        .Sum(c => c.Time <= CAFFEINE_HALF_LIFE * 60 ? coffeeType.CaffeineLevel : 0);
 
                     int timeToWait = 0;
 
-                    timeToWait = coffeeService.CalculateTimeToWait(coffeeType, consumedCaffeine);
-
-                    recommendations.Add(new CoffeeRecommendation
+                    if (consumedCaffeine < IDEAL_CAFFEINE_LEVEL)
                     {
-                        Name = coffeeType.Name,
-                        Code = coffeeType.Code,
-                        Wait = timeToWait
-                    });
+                        int desiredLevel = IDEAL_CAFFEINE_LEVEL;
+                        int currentLevel = consumedCaffeine;
+
+                        int timeFor65mg = CalculateTimeToReachLevel(desiredLevel - 65, currentLevel, coffeeType.CaffeineLevel, CAFFEINE_HALF_LIFE);
+                        int timeFor95mg = CalculateTimeToReachLevel(desiredLevel - 95, currentLevel, coffeeType.CaffeineLevel, CAFFEINE_HALF_LIFE);
+                        int timeFor120mg = CalculateTimeToReachLevel(desiredLevel - 120, currentLevel, coffeeType.CaffeineLevel, CAFFEINE_HALF_LIFE);
+
+                        if (timeFor65mg < timeFor95mg && timeFor65mg < timeFor120mg)
+                        {
+                            recommendations.Add(new CoffeeRecommendation
+                            {
+                                Name = "Espresso, Latte, Cappuccino, ou Flat White",
+                                Code = coffeeType.Code,
+                                Wait = timeFor65mg
+                            });
+                        }
+                        else if (timeFor95mg < timeFor120mg)
+                        {
+                            recommendations.Add(new CoffeeRecommendation
+                            {
+                                Name = "Black Coffee",
+                                Code = coffeeType.Code,
+                                Wait = timeFor95mg
+                            });
+                        }
+                        else
+                        {
+                            recommendations.Add(new CoffeeRecommendation
+                            {
+                                Name = "Cold Brew",
+                                Code = coffeeType.Code,
+                                Wait = timeFor120mg
+                            });
+                        }
+                    }
+                    else
+                    {
+                        timeToWait = 0;
+                        recommendations.Add(new CoffeeRecommendation
+                        {
+                            Name = coffeeType.Name,
+                            Code = coffeeType.Code,
+                            Wait = timeToWait
+                        });
+                    }
                 }
             }
 

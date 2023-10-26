@@ -17,12 +17,9 @@ namespace CoffeeOverview
 
         public void ConfigureServices(IServiceCollection services)
         {
-            // Configure services here
             services.AddControllers();
             services.AddScoped<ICoffeeService, CoffeeService>();
 
-            // Add your own services and dependencies, for example:
-            // services.AddScoped<ICoffeeService, CoffeeService>();
         }
 
         public void Configure(IApplicationBuilder app, IWebHostEnvironment env)
